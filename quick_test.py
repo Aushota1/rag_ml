@@ -64,7 +64,11 @@ def main():
         if telemetry['retrieved_chunk_pages']:
             print("\nИсточники:")
             for source in telemetry['retrieved_chunk_pages'][:3]:
-                print(f"  - Документ: {source['doc_id'][:20]}..., Страница: {source['page']}")
+                if source is None:
+                    continue
+                doc_id = source.get('doc_id', 'unknown') or 'unknown'
+                page = source.get('page', '?')
+                print(f"  - Документ: {doc_id[:20]}..., Страница: {page}")
         
         print()
     

@@ -123,13 +123,12 @@ Answer:"""
         """Собирает контекст из чанков"""
         context_parts = []
         for i, chunk in enumerate(chunks, 1):
-            text = chunk['text']
-            metadata = chunk['chunk']['metadata']
-            doc_id = metadata.get('doc_id', 'unknown')
+            text = chunk.get('text', '')
+            # Поддержка обеих структур: chunk['chunk']['metadata'] и chunk['metadata']
+            metadata = chunk.get('chunk', chunk).get('metadata', {})
+            doc_id = metadata.get('doc_id') or metadata.get('source', 'unknown')
             page = metadata.get('page', '?')
-            
             context_parts.append(f"[Document: {doc_id}, Page: {page}]\n{text}\n")
-        
         return '\n'.join(context_parts)
     
     def _build_prompt(self, question: str, answer_type: str, context: str) -> str:
