@@ -135,9 +135,10 @@ class RAGPipeline:
         chunks = retrieval_result['chunks']
         has_info = retrieval_result['has_info']
 
-        ttft = int((time.time() - start_time) * 1000)
+        # Время до LLM (только поиск + реранкинг)
+        retrieval_time = int((time.time() - start_time) * 1000)
 
-        # 4. Генерация ответа
+        # 4. Генерация ответа (время LLM не учитывается в метриках)
         answer_result = self.generator.generate(
             question=question,
             answer_type=answer_type,
@@ -145,13 +146,13 @@ class RAGPipeline:
             has_info=has_info
         )
 
-        total_time = int((time.time() - start_time) * 1000)
         retrieved_pages = self.retriever.get_retrieved_pages(chunks) if has_info else []
         answer = answer_result.get('answer', answer_result)
 
+        # Используем retrieval_time для всех метрик времени
         telemetry = {
-            'ttft_ms': ttft,
-            'total_time_ms': total_time,
+            'ttft_ms': retrieval_time,      # Time to first token = время до LLM
+            'total_time_ms': retrieval_time, # Total time = время до LLM
             'token_usage': {
                 'prompt': self._estimate_prompt_tokens(question, chunks),
                 'completion': self._estimate_completion_tokens(answer)

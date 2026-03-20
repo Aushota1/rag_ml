@@ -1,0 +1,26 @@
+{
+  "question_id": "30ab0e56ee0c43b5bf94fd9657c7f7ac24f0e7be29ced2933437f7a234713cd7",
+  "answer": false,
+  "telemetry": {
+    "timing": {
+      "ttft_ms": 16051,
+      "tpot_ms": 0,
+      "total_time_ms": 16051
+    },
+    "retrieval": {
+      "retrieved_chunk_pages": [
+        {
+          "doc_id": "bee43bdc6ca06c2a04f4126d4b94fa4be3d47a62e8b3bdd8d0ddce986dff25a6",
+          "page_numbers": [
+            8
+          ]
+        }
+      ]
+    },
+    "usage": {
+      "input_tokens": 3301,
+      "output_tokens": 1
+    },
+    "model_name": "google/gemini-2.5-flash"
+  }
+}

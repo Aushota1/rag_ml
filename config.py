@@ -30,10 +30,10 @@ class Config:
     CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", "512"))
     CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", "50"))
     
-    # Retrieval
-    TOP_K_RETRIEVAL = int(os.getenv("TOP_K_RETRIEVAL", "40"))
-    TOP_K_RERANK = int(os.getenv("TOP_K_RERANK", "5"))
-    RELEVANCE_THRESHOLD = float(os.getenv("RELEVANCE_THRESHOLD", "0.3"))
+    # Retrieval - увеличены для лучшего Grounding
+    TOP_K_RETRIEVAL = int(os.getenv("TOP_K_RETRIEVAL", "1000"))  # Было 40
+    TOP_K_RERANK = int(os.getenv("TOP_K_RERANK", "150"))  # Было 5
+    RELEVANCE_THRESHOLD = float(os.getenv("RELEVANCE_THRESHOLD", "0.05"))  # Было 0.3
     
     # API
     API_HOST = os.getenv("API_HOST", "0.0.0.0")

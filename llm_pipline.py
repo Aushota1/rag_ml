@@ -180,90 +180,126 @@ class EnhancedAnswerGenerator:
     def _init_prompts(self) -> Dict[str, str]:
         """Инициализация промптов для разных типов ответов"""
         return {
-            'boolean': """Analyze the context and answer the question with true or false. You MUST provide an answer.
+            'boolean': """Based STRICTLY on the provided context, answer with true or false.
 
 Context:
 {context}
 
 Question: {question}
 
-Rules:
-- Answer true if the context confirms the statement
-- Answer false if the context contradicts or does not support the statement
-- You MUST choose either true or false based on available evidence
-- Do NOT return null unless there is absolutely no relevant information
+CRITICAL RULES:
+1. Use ONLY information from the context above (marked as [SOURCE_N])
+2. Cite ALL documents and pages that you used to form your answer
+3. For each document, provide the exact quote that supports your answer
+4. If you use information from multiple documents, list ALL of them
+5. If context doesn't contain clear answer, return null
+
+IMPORTANT: You MUST list EVERY document that contributed to your answer.
+Missing sources will result in penalties.
 
 Examples:
-Question: "Was the claim approved?"
-Context: "The court approved the claim."
-Answer: {{"type": "boolean", "value": true}}
 
-Question: "Was the claim rejected?"
-Context: "The court approved the claim."
-Answer: {{"type": "boolean", "value": false}}
+Example 1 (Single document):
+Question: "Is the claim approved?"
+Context: "[SOURCE_1] Document ID: abc123, Page: 6, Content: The claim was approved."
+Answer: {{"type": "boolean", "value": true, "sources": [{{"doc_id": "abc123", "pages": [6], "quote": "The claim was approved"}}]}}
+
+Example 2 (Multiple documents):
+Question: "Was the claim approved and confirmed?"
+Context: 
+  "[SOURCE_1] Document ID: abc123, Page: 6, Content: The claim was approved."
+  "[SOURCE_2] Document ID: def456, Page: 3, Content: The approval was confirmed by the registrar."
+Answer: {{"type": "boolean", "value": true, "sources": [{{"doc_id": "abc123", "pages": [6], "quote": "The claim was approved"}}, {{"doc_id": "def456", "pages": [3], "quote": "confirmed by the registrar"}}]}}
 
 Now answer the question above. Respond ONLY with valid JSON:
-{{"type": "boolean", "value": true}}
-or
-{{"type": "boolean", "value": false}}""",
+{{"type": "boolean", "value": true/false/null, "sources": [{{"doc_id": "...", "pages": [N], "quote": "..."}}]}}""",
             
-            'number': """Based on the provided context, extract the specific number that answers the question.
+            'number': """Based STRICTLY on the provided context, extract the specific number that answers the question.
 
 Context:
 {context}
 
 Question: {question}
 
-Respond ONLY with valid JSON (no other text):
-{{"type": "number", "value": 123}}
+CRITICAL RULES:
+1. Use ONLY numbers from the context above
+2. Cite ALL documents and pages where you found this number
+3. If no number found, return null
+4. Do NOT calculate or infer numbers
+
+Respond ONLY with valid JSON:
+{{"type": "number", "value": 123, "sources": [{{"doc_id": "...", "pages": [N], "quote": "..."}}]}}
 or
-{{"type": "number", "value": null}}""",
+{{"type": "number", "value": null, "sources": []}}""",
             
-            'date': """Based on the provided context, extract the specific date that answers the question.
+            'date': """Based STRICTLY on the provided context, extract the specific date that answers the question.
 
 Context:
 {context}
 
 Question: {question}
 
-Format dates as YYYY-MM-DD. Respond ONLY with valid JSON (no other text):
-{{"type": "date", "value": "2024-03-15"}}
+CRITICAL RULES:
+1. Use ONLY dates from the context above
+2. Format as YYYY-MM-DD
+3. Cite ALL documents and pages where you found this date
+4. If no date found, return null
+
+Respond ONLY with valid JSON:
+{{"type": "date", "value": "2024-03-15", "sources": [{{"doc_id": "...", "pages": [N], "quote": "..."}}]}}
 or
-{{"type": "date", "value": null}}""",
+{{"type": "date", "value": null, "sources": []}}""",
             
-            'name': """Based on the provided context, extract the specific name that answers the question.
+            'name': """Based STRICTLY on the provided context, extract the specific name that answers the question.
 
 Context:
 {context}
 
 Question: {question}
 
-Respond ONLY with valid JSON (no other text):
-{{"type": "name", "value": "John Doe"}}
+CRITICAL RULES:
+1. Use ONLY names from the context above
+2. Cite ALL documents and pages where you found this name
+3. If no name found, return null
+
+Respond ONLY with valid JSON:
+{{"type": "name", "value": "John Doe", "sources": [{{"doc_id": "...", "pages": [N], "quote": "..."}}]}}
 or
-{{"type": "name", "value": null}}""",
+{{"type": "name", "value": null, "sources": []}}""",
             
-            'names': """Based on the provided context, extract all relevant names that answer the question.
+            'names': """Based STRICTLY on the provided context, extract all relevant names that answer the question.
 
 Context:
 {context}
 
 Question: {question}
 
-Respond ONLY with valid JSON (no other text):
-{{"type": "names", "value": ["Name 1", "Name 2"]}}
+CRITICAL RULES:
+1. Use ONLY names from the context above
+2. Cite ALL documents and pages where you found these names
+3. If no names found, return empty array
+
+Respond ONLY with valid JSON:
+{{"type": "names", "value": ["Name 1", "Name 2"], "sources": [{{"doc_id": "...", "pages": [N, M], "quote": "..."}}]}}
 or
-{{"type": "names", "value": []}}""",
+{{"type": "names", "value": [], "sources": []}}""",
             
-            'free_text': """Based on the provided context, provide a comprehensive answer to the question. Keep your answer under 280 characters.
+            'free_text': """Based STRICTLY on the provided context, provide a comprehensive answer to the question.
 
 Context:
 {context}
 
 Question: {question}
 
-Respond ONLY with valid JSON (no other text):
-{{"type": "free_text", "value": "Your answer here"}}"""
+CRITICAL RULES:
+1. Use ONLY information from the context above
+2. Keep answer under 280 characters
+3. Cite ALL documents and pages that you used
+4. If you use multiple documents, list ALL of them
+5. If no information found, state clearly
+
+Respond ONLY with valid JSON:
+{{"type": "free_text", "value": "Your answer here", "sources": [{{"doc_id": "...", "pages": [N, M], "quote": "..."}}, {{"doc_id": "...", "pages": [K], "quote": "..."}}]}}"""
         }
     
     def generate(
@@ -297,8 +333,17 @@ Respond ONLY with valid JSON (no other text):
         
         # Генерируем ответ через LLM
         try:
-            # Системный промпт для JSON ответов
-            system_prompt = "You are a precise legal document assistant. Always respond with valid JSON only, no additional text."
+            # Системный промпт для JSON ответов с требованием цитирования
+            system_prompt = """You are a precise legal document assistant.
+
+CRITICAL RULES:
+1. Use ONLY information from provided sources (marked as [SOURCE_N])
+2. Always cite: document ID, page number, and exact quote
+3. If information is not in sources, return null
+4. Never use external knowledge or make assumptions
+5. Quote exact text that supports your answer
+
+Always respond with valid JSON only, no additional text."""
             
             response = self.llm.generate(
                 prompt=prompt,
@@ -318,7 +363,7 @@ Respond ONLY with valid JSON (no other text):
             return self._fallback_answer(question, answer_type, context, chunks)
     
     def _build_context(self, chunks: List[Dict]) -> str:
-        """Собирает контекст из чанков с добавлением полных страниц если доступен indexer"""
+        """Собирает контекст с явными маркерами SOURCE для цитирования"""
         context_parts = []
         seen_pages = set()  # Для отслеживания уже добавленных страниц
         
@@ -339,8 +384,13 @@ Respond ONLY with valid JSON (no other text):
                     text = full_page_text
                     seen_pages.add(page_key)
             
+            # Явные маркеры для LLM с инструкциями по цитированию
             context_parts.append(
-                f"[Document: {doc_id}, Page: {page}]\n{text}\n"
+                f"[SOURCE_{i}]\n"
+                f"Document ID: {doc_id}\n"
+                f"Page: {page}\n"
+                f"Content: \"{text}\"\n"
+                f"[/SOURCE_{i}]\n"
             )
         
         return '\n'.join(context_parts)
@@ -374,14 +424,14 @@ Respond ONLY with valid JSON (no other text):
     
     def _parse_llm_response(self, response: str, answer_type: str) -> Dict:
         """
-        Парсит ответ от LLM
+        Парсит ответ от LLM с поддержкой evidence
         
         Args:
             response: Текстовый ответ от LLM
             answer_type: Ожидаемый тип ответа
             
         Returns:
-            Распарсенный ответ в формате {"type": "...", "value": ...}
+            Распарсенный ответ в формате {"type": "...", "value": ..., "evidence": {...}}
         """
         try:
             # Пытаемся извлечь JSON из ответа
@@ -418,7 +468,57 @@ Respond ONLY with valid JSON (no other text):
                 print(f"⚠ Type mismatch: expected {answer_type}, got {answer['type']}")
                 answer['type'] = answer_type
             
-            return answer
+            # Извлекаем sources если есть (новый формат)
+            sources = answer.get('sources', [])
+            
+            # Возвращаем с sources
+            result = {
+                'type': answer['type'],
+                'value': answer['value']
+            }
+            
+            if sources and isinstance(sources, list):
+                result['sources'] = []
+                for source in sources:
+                    if isinstance(source, dict) and 'doc_id' in source:
+                        validated_source = {
+                            'doc_id': str(source.get('doc_id', '')),
+                            'pages': [],
+                            'quote': str(source.get('quote', ''))[:200]
+                        }
+                        
+                        # Поддержка списка страниц
+                        if 'pages' in source and isinstance(source['pages'], list):
+                            validated_source['pages'] = [int(p) for p in source['pages'] if p]
+                        elif 'page' in source:
+                            validated_source['pages'] = [int(source['page'])]
+                        
+                        if validated_source['pages']:
+                            result['sources'].append(validated_source)
+                
+                # Если sources пустой после валидации, удаляем
+                if not result['sources']:
+                    del result['sources']
+            
+            # Обратная совместимость: поддержка старого формата evidence
+            elif 'evidence' in answer:
+                evidence = answer['evidence']
+                if evidence and isinstance(evidence, dict) and 'doc_id' in evidence:
+                    result['sources'] = [{
+                        'doc_id': str(evidence.get('doc_id', '')),
+                        'pages': [],
+                        'quote': str(evidence.get('primary_quote', evidence.get('quote', '')))[:200]
+                    }]
+                    
+                    if 'pages' in evidence and isinstance(evidence['pages'], list):
+                        result['sources'][0]['pages'] = [int(p) for p in evidence['pages'] if p]
+                    elif 'page' in evidence:
+                        result['sources'][0]['pages'] = [int(evidence['page'])]
+                    
+                    if not result['sources'][0]['pages']:
+                        del result['sources']
+            
+            return result
         
         except (json.JSONDecodeError, ValueError) as e:
             print(f"✗ Failed to parse LLM response as JSON: {e}")
@@ -504,10 +604,14 @@ Respond ONLY with valid JSON (no other text):
     ) -> Dict:
         """
         Fallback на простую эвристику при ошибке LLM
+        Теперь с добавлением evidence из первого чанка
         """
         import re
         
         print(f"  ⚠ Using fallback heuristic for {answer_type}")
+        
+        # Получаем базовый ответ
+        result = None
         
         if answer_type == 'boolean':
             # Улучшенная эвристика для boolean
@@ -545,12 +649,12 @@ Respond ONLY with valid JSON (no other text):
                 # Если есть релевантная информация, скорее всего ответ положительный
                 value = len(context) > 500
             
-            return {'type': 'boolean', 'value': value}
+            result = {'type': 'boolean', 'value': value}
         
         elif answer_type == 'number':
             numbers = re.findall(r'\b\d+(?:\.\d+)?\b', context)
             value = float(numbers[0]) if numbers else None
-            return {'type': 'number', 'value': value}
+            result = {'type': 'number', 'value': value}
         
         elif answer_type == 'date':
             date_patterns = [
@@ -560,19 +664,34 @@ Respond ONLY with valid JSON (no other text):
             for pattern in date_patterns:
                 match = re.search(pattern, context)
                 if match:
-                    return {'type': 'date', 'value': match.group(0)}
-            return {'type': 'date', 'value': None}
+                    result = {'type': 'date', 'value': match.group(0)}
+                    break
+            if not result:
+                result = {'type': 'date', 'value': None}
         
         elif answer_type in ['name', 'names']:
             names = re.findall(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+\b', context)
             if answer_type == 'name':
-                return {'type': 'name', 'value': names[0] if names else None}
+                result = {'type': 'name', 'value': names[0] if names else None}
             else:
-                return {'type': 'names', 'value': list(set(names[:5]))}
+                result = {'type': 'names', 'value': list(set(names[:5]))}
         
         else:  # free_text
             text = chunks[0]['text'][:280] if chunks else "Информация не найдена."
-            return {'type': 'free_text', 'value': text}
+            result = {'type': 'free_text', 'value': text}
+        
+        # Добавляем sources из первого чанка если есть
+        if chunks and result.get('value') is not None:
+            first_chunk = chunks[0]
+            metadata = first_chunk.get('chunk', first_chunk).get('metadata', {})
+            
+            result['sources'] = [{
+                'doc_id': metadata.get('doc_id', 'unknown'),
+                'pages': [metadata.get('page', 0)],
+                'quote': first_chunk.get('text', '')[:200]
+            }]
+        
+        return result
 
 
 # Для обратной совместимости
